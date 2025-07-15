@@ -1,4 +1,4 @@
-import { Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import Movies from './pages/Movies'
@@ -15,6 +15,7 @@ const App = () => {
 
   return (
     <>
+    
       <Toaster />
       {!isAdminRoute && <Navbar />}
       <Routes>
@@ -26,6 +27,7 @@ const App = () => {
         <Route path='/favorite' element={<Favorite />} />
       </Routes>
       {!isAdminRoute && <Footer/>}
+      
     </>
   )
 }
