@@ -1,13 +1,16 @@
-import FeaturedSection from "../components/FeaturedSection";
-import HeroSection from "../components/HeroSection";
-import TrailersSection from "../components/TrailersSection";
+import React from 'react'
+import HeroSection from '../components/HeroSection'
+import FeaturedSection from '../components/FeaturedSection'
+import TrailersSection from '../components/TrailersSection'
 
-export default function Home() {
+const Home = () => {
   return (
     <>
       <HeroSection />
       <FeaturedSection />
       <TrailersSection />
     </>
-  );
+  )
 }
+
+export default Home
