@@ -1,4 +1,4 @@
-import logo from './showtime-logo2'
+import logo from './showtime-logo2.png'
 import marvelLogo from './marvelLogo.svg'
 import googlePlay from './googlePlay.svg'
 import appStore from './appStore.svg'

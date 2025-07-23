@@ -1,4 +1,4 @@
-import React from 'react'
+
 import { assets } from '../assets/assets'
 
 const Footer = () => {
@@ -28,14 +28,14 @@ const Footer = () => {
                     <div>
                         <h2 className="font-semibold mb-5">Get in touch</h2>
                         <div className="text-sm space-y-2">
-                            <p>+1-234-567-890</p>
-                            <p>contact@example.com</p>
+                            <p>+254 703966756</p>
+                            <p>BradJohn70@gmail.com</p>
                         </div>
                     </div>
                 </div>
             </div>
             <p className="pt-4 text-center text-sm pb-5">
-                Copyright {new Date().getFullYear()} © GreatStack. All Right Reserved.
+                Copyright {new Date().getFullYear()} © Chiwo. All Right Reserved.
             </p>
         </footer>
   )
