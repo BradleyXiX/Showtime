@@ -24,7 +24,7 @@ const checkSeatsAvailability = async (showId, selectedSeats)=>{
 export const createBooking = async (req, res)=>{
     try {
         const {userId} = req.auth();
-        const {showId, selectedSeats} = req.body;
+        const {showId, selectedSeats, expectedVersion} = req.body;
         const { origin } = req.headers;
 
         // Check if the seat is available for the selected show
@@ -36,22 +36,35 @@ export const createBooking = async (req, res)=>{
 
         // Get the show details
         const showData = await Show.findById(showId).populate('movie');
+        if (!showData) {
+            return res.json({success: false, message: "Show not found."})
+        }
 
-        // Create a new booking
+        selectedSeats.forEach((seat)=>{
+            showData.occupiedSeats[seat] = userId;
+        })
+
+        // Implement Optimistic Concurrency Control using the version field.
+        const updatedShow = await Show.findOneAndUpdate(
+            { _id: showId, version: expectedVersion },
+            {
+                $set: { occupiedSeats: showData.occupiedSeats },
+                $inc: { version: 1 }
+            },
+            { new: true }
+        );
+
+        if (!updatedShow) {
+            return res.status(409).json({ success: false, message: "Seat is no longer available." });
+        }
+
+        // Create a new booking after successful OCC update
         const booking = await Booking.create({
             user: userId,
             show: showId,
             amount: showData.showPrice * selectedSeats.length,
             bookedSeats: selectedSeats
         })
-
-        selectedSeats.map((seat)=>{
-            showData.occupiedSeats[seat] = userId;
-        })
-
-        showData.markModified('occupiedSeats');
-
-        await showData.save();
 
          // Stripe Gateway Initialize
          const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY)
@@ -104,9 +117,13 @@ export const getOccupiedSeats = async (req, res)=>{
         const {showId} = req.params;
         const showData = await Show.findById(showId)
 
+        if (!showData) {
+            return res.json({success: false, message: "Show not found."})
+        }
+
         const occupiedSeats = Object.keys(showData.occupiedSeats)
 
-        res.json({success: true, occupiedSeats})
+        res.json({success: true, occupiedSeats, version: showData.version})
 
     } catch (error) {
         console.log(error.message);

@@ -6,8 +6,11 @@ import { ArrowRightIcon, ClockIcon } from 'lucide-react'
 import isoTimeFormat from '../lib/isoTimeFormat'
 import BlurCircle from '../components/BlurCircle'
 import toast from 'react-hot-toast'
+import { useAppContext } from '../context/AppContext'
 
 const SeatLayout = () => {
+
+  const { axios, getToken, user } = useAppContext()
 
   const groupRows = [["A", "B"], ["C", "D"], ["E", "F"], ["G", "H"], ["I", "J"]]
 
@@ -16,6 +19,7 @@ const SeatLayout = () => {
   const [selectedTime, setSelectedTime] = useState(null)
   const [show, setShow] = useState(null)
   const [occupiedSeats, setOccupiedSeats] = useState([])
+  const [showVersion, setShowVersion] = useState(0)
 
   const navigate = useNavigate()
 
@@ -65,6 +69,7 @@ const SeatLayout = () => {
       const { data } = await axios.get(`/api/booking/seats/${selectedTime.showId}`)
       if (data.success) {
         setOccupiedSeats(data.occupiedSeats)
+        setShowVersion(data.version || 0)
       }else{
         toast.error(data.message)
       }
@@ -80,7 +85,7 @@ const SeatLayout = () => {
 
         if(!selectedTime || !selectedSeats.length) return toast.error('Please select a time and seats');
 
-        const {data} = await axios.post('/api/booking/create', {showId: selectedTime.showId, selectedSeats}, {headers: { Authorization: `Bearer ${await getToken()}` }});
+        const {data} = await axios.post('/api/booking/create', {showId: selectedTime.showId, selectedSeats, expectedVersion: showVersion}, {headers: { Authorization: `Bearer ${await getToken()}` }});
 
         if (data.success){
           window.location.href = data.url;
