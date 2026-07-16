@@ -1,0 +1,23 @@
+config:
+  target: 'http://localhost:5000'
+  phases:
+    - duration: 1
+      arrivalCount: 500 # Launch 500 concurrent virtual users at once
+      name: "Concurrent Booking Surge"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      Authorization: "Bearer YOUR_CLERK_JWT_TOKEN_HERE" # Replace with a valid Clerk JWT token
+
+scenarios:
+  - name: "Concurrent Seat Booking Scenarios"
+    flow:
+      - post:
+          url: "/api/booking/create"
+          json:
+            showId: "YOUR_SHOW_ID_HERE" # Replace with a valid show ID
+            selectedSeats: ["A1"] # The exact seat being targetted concurrently
+            expectedVersion: 0
+          expect:
+            # We expect either 200 (first request) or 409 (subsequent requests)
+            - statusCode: [200, 409]

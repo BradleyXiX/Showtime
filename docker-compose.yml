@@ -1,0 +1,63 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: showtime-mongodb
+    ports:
+      - "27017:27017"
+    command: mongod --replSet rs0 --bind_ip_all
+    healthcheck:
+      test: mongosh --eval "db.adminCommand('ping')" --quiet
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - mongodb_data:/data/db
+
+  mongodb-init:
+    image: mongo:latest
+    container_name: showtime-mongodb-init
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    entrypoint:
+      - mongosh
+      - --host
+      - mongodb
+      - --eval
+      - |
+        try {
+          rs.status();
+        } catch (err) {
+          rs.initiate({
+            _id: "rs0",
+            members: [{ _id: 0, host: "mongodb:27017" }]
+          });
+        }
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: showtime-backend
+    ports:
+      - "5000:3000"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    env_file:
+      - ./server/.env
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: showtime-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongodb_data:
