@@ -15,9 +15,9 @@ scenarios:
       - post:
           url: "/api/booking/create"
           json:
-            showId: "YOUR_SHOW_ID_HERE" # Replace with a valid show ID
-            selectedSeats: ["A1"] # The exact seat being targetted concurrently
-            expectedVersion: 0
+            showId: "6a60e60c180f0cea026f04a3" # Replace with a valid show ID from your database
+            selectedSeats: ["A1"] # The exact seat being targeted concurrently (array of strings)
+            expectedVersion: 0 # Expected version for Optimistic Concurrency Control (OCC)
           expect:
-            # We expect either 200 (first request) or 409 (subsequent requests)
+            # We expect exactly 1 request to return 200 and the other 499 requests to return 409
             - statusCode: [200, 409]
