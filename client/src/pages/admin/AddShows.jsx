@@ -170,8 +170,8 @@ const AddShows = () => {
             </ul>
             </div>
        )}
-       <button onClick={handleSubmit} disabled={addingShow} className="bg-primary text-white px-8 py-2 mt-6 rounded hover:bg-primary/90 transition-all cursor-pointer" >
-            Add Show
+       <button onClick={handleSubmit} disabled={addingShow} className={`bg-primary text-white px-8 py-2 mt-6 rounded transition-all cursor-pointer ${addingShow ? 'opacity-70 cursor-not-allowed' : 'hover:bg-primary/90'}`} >
+            {addingShow ? 'Adding Show...' : 'Add Show'}
         </button>
     </>
   ) : <Loading />

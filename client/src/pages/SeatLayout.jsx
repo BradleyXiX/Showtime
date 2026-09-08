@@ -19,7 +19,7 @@ const SeatLayout = () => {
   const [selectedTime, setSelectedTime] = useState(null)
   const [show, setShow] = useState(null)
   const [occupiedSeats, setOccupiedSeats] = useState([])
-  const [showVersion, setShowVersion] = useState(0)
+  const [isBooking, setIsBooking] = useState(false)
 
   const navigate = useNavigate()
 
@@ -69,7 +69,6 @@ const SeatLayout = () => {
       const { data } = await axios.get(`/api/booking/seats/${selectedTime.showId}`)
       if (data.success) {
         setOccupiedSeats(data.occupiedSeats)
-        setShowVersion(data.version || 0)
       }else{
         toast.error(data.message)
       }
@@ -85,7 +84,8 @@ const SeatLayout = () => {
 
         if(!selectedTime || !selectedSeats.length) return toast.error('Please select a time and seats');
 
-        const {data} = await axios.post('/api/booking/create', {showId: selectedTime.showId, selectedSeats, expectedVersion: showVersion}, {headers: { Authorization: `Bearer ${await getToken()}` }});
+        setIsBooking(true);
+        const {data} = await axios.post('/api/booking/create', {showId: selectedTime.showId, selectedSeats}, {headers: { Authorization: `Bearer ${await getToken()}` }});
 
         if (data.success){
           window.location.href = data.url;
@@ -94,6 +94,8 @@ const SeatLayout = () => {
         }
     } catch (error) {
       toast.error(error.message)
+    } finally {
+      setIsBooking(false);
     }
   }
 
@@ -144,9 +146,9 @@ const SeatLayout = () => {
               </div>
           </div>
 
-          <button onClick={bookTickets} className='flex items-center gap-1 mt-20 px-10 py-3 text-sm bg-primary hover:bg-primary-dull transition rounded-full font-medium cursor-pointer active:scale-95'>
-            Proceed to Checkout
-            <ArrowRightIcon strokeWidth={3} className="w-4 h-4"/>
+          <button disabled={isBooking} onClick={bookTickets} className={`flex items-center gap-1 mt-20 px-10 py-3 text-sm bg-primary hover:bg-primary-dull transition rounded-full font-medium cursor-pointer active:scale-95 ${isBooking ? "opacity-70 cursor-not-allowed" : ""}`}>
+            {isBooking ? 'Processing...' : 'Proceed to Checkout'}
+            {!isBooking && <ArrowRightIcon strokeWidth={3} className="w-4 h-4"/>}
           </button>
 
          

@@ -71,7 +71,8 @@ const Dashboard = () => {
             <p className="mt-10 text-lg font-medium">Active Shows</p>
             <div className="relative flex flex-wrap gap-6 mt-4 max-w-5xl">
                 <BlurCircle top="100px" left="-10%" />
-                {dashboardData.activeShows.map((show) => (
+            {dashboardData.activeShows.length > 0 ? (
+                dashboardData.activeShows.map((show) => (
                     <div key={show._id} className="w-55 rounded-lg overflow-hidden h-full pb-3 bg-primary/10 border border-primary/20 hover:-translate-y-1 transition duration-300">
                         <img src={image_base_url + show.movie.poster_path} alt='' className="h-60 w-full object-cover" />
                         <p className="font-medium p-2 truncate">{show.movie.title}</p>
@@ -84,7 +85,13 @@ const Dashboard = () => {
                         </div>
                         <p className="px-2 pt-2 text-sm text-gray-500">{dateFormat(show.showDateTime)}</p>
                     </div>
-                ))}
+                ))
+            ) : (
+                <div className="w-full py-10 flex flex-col items-center justify-center bg-primary/5 border border-primary/10 rounded-lg">
+                    <PlayCircleIcon className="w-12 h-12 text-primary/40 mb-3" />
+                    <p className="text-gray-400">No active shows available at the moment.</p>
+                </div>
+            )}
             </div>
 
     </>

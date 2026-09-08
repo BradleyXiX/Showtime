@@ -2,112 +2,96 @@ import { inngest } from "../inngest/index.js";
 import Booking from "../models/Booking.js";
 import Show from "../models/Show.js"
 import stripe from 'stripe'
+import mongoose from 'mongoose'
 
-
-// Function to check availability of selected seats for a movie
-const checkSeatsAvailability = async (showId, selectedSeats)=>{
-    try {
-        const showData = await Show.findById(showId)
-        if(!showData) return false;
-
-        const occupiedSeats = showData.occupiedSeats;
-
-        const isAnySeatTaken = selectedSeats.some(seat => occupiedSeats[seat]);
-
-        return !isAnySeatTaken;
-    } catch (error) {
-        console.log(error.message);
-        return false;
-    }
-}
 
 export const createBooking = async (req, res)=>{
+    const session = await mongoose.startSession();
     try {
         const {userId} = req.auth();
-        const {showId, selectedSeats, expectedVersion} = req.body;
+        const {showId, selectedSeats} = req.body;
         const { origin } = req.headers;
 
-        // Check if the seat is available for the selected show
-        const isAvailable = await checkSeatsAvailability(showId, selectedSeats)
+        let booking, sessionUrl;
 
-        if(!isAvailable){
-            return res.json({success: false, message: "Selected Seats are not available."})
-        }
+        await session.withTransaction(async () => {
+            // Get the show details inside the transaction
+            const showData = await Show.findById(showId).populate('movie').session(session);
+            if (!showData) {
+                throw new Error("Show not found.");
+            }
 
-        // Get the show details
-        const showData = await Show.findById(showId).populate('movie');
-        if (!showData) {
-            return res.json({success: false, message: "Show not found."})
-        }
+            const occupiedSeats = showData.occupiedSeats || {};
+            const isAnySeatTaken = selectedSeats.some(seat => occupiedSeats[seat]);
 
-        selectedSeats.forEach((seat)=>{
-            showData.occupiedSeats[seat] = userId;
-        })
+            if(isAnySeatTaken){
+                throw new Error("Selected Seats are no longer available.");
+            }
 
-        // Implement Optimistic Concurrency Control using the version field.
-        const updatedShow = await Show.findOneAndUpdate(
-            { _id: showId, version: expectedVersion },
-            {
-                $set: { occupiedSeats: showData.occupiedSeats },
-                $inc: { version: 1 }
-            },
-            { new: true }
-        );
+            selectedSeats.forEach((seat)=>{
+                showData.occupiedSeats[seat] = userId;
+            });
+            showData.markModified('occupiedSeats');
 
-        if (!updatedShow) {
-            return res.status(409).json({ success: false, message: "Seat is no longer available." });
-        }
+            await showData.save({ session });
 
-        // Create a new booking after successful OCC update
-        const booking = await Booking.create({
-            user: userId,
-            show: showId,
-            amount: showData.showPrice * selectedSeats.length,
-            bookedSeats: selectedSeats
-        })
+            // Create a new booking
+            booking = new Booking({
+                user: userId,
+                show: showId,
+                amount: showData.showPrice * selectedSeats.length,
+                bookedSeats: selectedSeats
+            });
+            await booking.save({ session });
 
-         // Stripe Gateway Initialize
-         const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY)
+            // Stripe Gateway Initialize
+            const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY)
 
-         // Creating line items to for Stripe
-         const line_items = [{
-            price_data: {
-                currency: 'usd',
-                product_data:{
-                    name: showData.movie.title
+            const line_items = [{
+                price_data: {
+                    currency: 'usd',
+                    product_data:{
+                        name: showData.movie.title
+                    },
+                    unit_amount: Math.floor(booking.amount) * 100
                 },
-                unit_amount: Math.floor(booking.amount) * 100
-            },
-            quantity: 1
-         }]
+                quantity: 1
+            }]
 
-         const session = await stripeInstance.checkout.sessions.create({
-            success_url: `${origin}/loading/my-bookings`,
-            cancel_url: `${origin}/my-bookings`,
-            line_items: line_items,
-            mode: 'payment',
-            metadata: {
-                bookingId: booking._id.toString()
-            },
-            expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // Expires in 30 minutes
-         })
+            const stripeSession = await stripeInstance.checkout.sessions.create({
+                success_url: `${origin}/loading/my-bookings`,
+                cancel_url: `${origin}/my-bookings`,
+                line_items: line_items,
+                mode: 'payment',
+                metadata: {
+                    bookingId: booking._id.toString()
+                },
+                expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+            })
+            
+            booking.paymentLink = stripeSession.url;
+            await booking.save({ session });
+            sessionUrl = stripeSession.url;
+        });
 
-         booking.paymentLink = session.url
-         await booking.save()
-
-         // Run Inngest Sheduler Function to check payment status after 10 minutes
-         await inngest.send({
+        // Run Inngest Sheduler Function to check payment status after 10 minutes (outside transaction)
+        await inngest.send({
             name: "app/checkpayment",
             data: {
                 bookingId: booking._id.toString()
             }
-         })
+        })
 
-         res.json({success: true, url: session.url})
+        res.json({success: true, url: sessionUrl})
 
     } catch (error) {
         console.log(error.message);
+        if (error.message === "Selected Seats are no longer available.") {
+            return res.status(409).json({success: false, message: error.message});
+        }
         res.json({success: false, message: error.message})
+    } finally {
+        session.endSession();
     }
 }
 
