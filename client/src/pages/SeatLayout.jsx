@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { assets, dummyDateTimeData, dummyShowsData } from '../assets/assets'
 import Loading from '../components/Loading'
 import { ArrowRightIcon, ClockIcon } from 'lucide-react'
@@ -21,7 +21,7 @@ const SeatLayout = () => {
   const [occupiedSeats, setOccupiedSeats] = useState([])
   const [isBooking, setIsBooking] = useState(false)
 
-  const navigate = useNavigate()
+
 
 
   const getShow = async () =>{
