@@ -20,15 +20,22 @@ const AddShows = () => {
     const [addingShow, setAddingShow] = useState(false)
 
 
+     const [fetchingMovies, setFetchingMovies] = useState(true);
+
      const fetchNowPlayingMovies = async () => {
         try {
             const { data } = await axios.get('/api/show/now-playing', {
                 headers: { Authorization: `Bearer ${await getToken()}` }})
                 if(data.success){
                     setNowPlayingMovies(data.movies)
+                } else {
+                    toast.error(data.message || "Failed to fetch movies from TMDB. Check TMDB_API_KEY")
                 }
         } catch (error) {
             console.error('Error fetching movies:', error)
+            toast.error("Network error while fetching movies")
+        } finally {
+            setFetchingMovies(false)
         }
     };
 
@@ -99,7 +106,7 @@ const AddShows = () => {
         }
     }, [user]);
 
-  return nowPlayingMovies.length > 0 ? (
+  return !fetchingMovies ? (
     <>
       <Title text1="Add" text2="Shows" />
       <p className="mt-10 text-lg font-medium">Now Playing Movies</p>
