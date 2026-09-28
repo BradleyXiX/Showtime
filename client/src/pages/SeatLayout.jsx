@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { assets, dummyDateTimeData, dummyShowsData } from '../assets/assets'
+import { assets } from '../assets/assets'
 import Loading from '../components/Loading'
 import { ArrowRightIcon, ClockIcon } from 'lucide-react'
 import isoTimeFormat from '../lib/isoTimeFormat'
@@ -25,12 +25,19 @@ const SeatLayout = () => {
 
 
   const getShow = async () =>{
-    const show = dummyShowsData.find(show => show._id === id )
-    if(show) {
-      setShow({
-        movie : show,
-        dateTime : dummyDateTimeData
-      })
+    try {
+      const { data } = await axios.get(`/api/show/${id}`)
+      if(data.success) {
+        setShow({
+          movie : data.movie,
+          dateTime : data.dateTime
+        })
+      } else {
+        toast.error(data.message)
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error('Error fetching show data')
     }
   }
 
