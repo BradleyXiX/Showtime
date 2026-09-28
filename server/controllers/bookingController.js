@@ -44,34 +44,48 @@ export const createBooking = async (req, res)=>{
             });
             await booking.save({ session });
 
-            // Stripe Gateway Initialize
-            const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY)
+            // Mock Payment / Stripe Fallback for Portfolio
+            if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY.startsWith("sk_")) {
+                try {
+                    const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY)
 
-            const line_items = [{
-                price_data: {
-                    currency: 'usd',
-                    product_data:{
-                        name: showData.movie.title
-                    },
-                    unit_amount: Math.floor(booking.amount) * 100
-                },
-                quantity: 1
-            }]
+                    const line_items = [{
+                        price_data: {
+                            currency: 'usd',
+                            product_data:{
+                                name: showData.movie.title
+                            },
+                            unit_amount: Math.floor(booking.amount) * 100
+                        },
+                        quantity: 1
+                    }]
 
-            const stripeSession = await stripeInstance.checkout.sessions.create({
-                success_url: `${origin}/loading/my-bookings`,
-                cancel_url: `${origin}/my-bookings`,
-                line_items: line_items,
-                mode: 'payment',
-                metadata: {
-                    bookingId: booking._id.toString()
-                },
-                expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
-            })
-            
-            booking.paymentLink = stripeSession.url;
-            await booking.save({ session });
-            sessionUrl = stripeSession.url;
+                    const stripeSession = await stripeInstance.checkout.sessions.create({
+                        success_url: `${origin}/loading/my-bookings`,
+                        cancel_url: `${origin}/my-bookings`,
+                        line_items: line_items,
+                        mode: 'payment',
+                        metadata: {
+                            bookingId: booking._id.toString()
+                        },
+                        expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+                    })
+                    
+                    booking.paymentLink = stripeSession.url;
+                    await booking.save({ session });
+                    sessionUrl = stripeSession.url;
+                } catch (stripeError) {
+                    console.log("Stripe Error, falling back to mock payment:", stripeError.message);
+                    booking.isPaid = true;
+                    await booking.save({ session });
+                    sessionUrl = `${origin}/loading/my-bookings`;
+                }
+            } else {
+                // Mock payment
+                booking.isPaid = true;
+                await booking.save({ session });
+                sessionUrl = `${origin}/loading/my-bookings`;
+            }
         });
 
         // Run Inngest Sheduler Function to check payment status after 10 minutes (outside transaction)
